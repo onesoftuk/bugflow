@@ -5,6 +5,7 @@ import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
 import { registerSchema, loginSchema, insertTicketSchema, updateTicketStatusSchema, insertCommentSchema } from "@shared/schema";
 import { z } from "zod";
+import { sendStatusUpdateEmail } from "./email";
 
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated()) {
@@ -152,7 +153,13 @@ export async function registerRoutes(
       try {
         const ticketOwner = await storage.getUser(ticket.userId);
         if (ticketOwner) {
-          console.log(`[Email] Would notify ${ticketOwner.email}: Ticket "${ticket.title}" status changed from ${oldStatus} to ${data.status}`);
+          await sendStatusUpdateEmail(
+            ticketOwner.email,
+            ticketOwner.username,
+            ticket.title,
+            oldStatus,
+            data.status
+          );
         }
       } catch (emailError) {
         console.error("Email notification failed:", emailError);
