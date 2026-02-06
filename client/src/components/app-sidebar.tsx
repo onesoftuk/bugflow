@@ -1,4 +1,5 @@
-import { Bug, LayoutDashboard, PlusCircle, Settings, LogOut, Sparkles, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, PlusCircle, Settings, LogOut, Sparkles, ShieldCheck } from "lucide-react";
+import logoImg from "@assets/favicon_1770388281198.ico";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/lib/auth";
 import {
@@ -36,9 +37,7 @@ export function AppSidebar() {
       <SidebarHeader className="p-4">
         <Link href="/">
           <div className="flex items-center gap-3 cursor-pointer" data-testid="link-home">
-            <div className="p-2 rounded-md bg-primary text-primary-foreground">
-              <Bug className="h-5 w-5" />
-            </div>
+            <img src={logoImg} alt="BugFlow" className="h-8 w-8 rounded-md" />
             <div>
               <h2 className="font-bold text-lg leading-none">BugFlow</h2>
               <p className="text-xs text-muted-foreground mt-0.5">Issue Tracker</p>
