@@ -4,6 +4,22 @@ import { log } from "./index";
 
 export async function seedDatabase() {
   try {
+    // Always ensure taxiadmin exists
+    const existingTaxiAdmin = await storage.getUserByUsername("taxiadmin");
+    if (!existingTaxiAdmin) {
+      const { db } = await import("./db");
+      const { users } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+      const taxiAdminPassword = await hashPassword("Polopolo133");
+      const taxiAdmin = await storage.createUser({
+        username: "taxiadmin",
+        email: "taxiadmin@bugflow.app",
+        password: taxiAdminPassword,
+      });
+      await db.update(users).set({ role: "admin" }).where(eq(users.id, taxiAdmin.id));
+      log("Created taxiadmin user", "seed");
+    }
+
     const existingAdmin = await storage.getUserByUsername("admin");
     if (existingAdmin) {
       log("Database already seeded", "seed");
