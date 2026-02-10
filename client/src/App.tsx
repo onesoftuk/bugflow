@@ -14,6 +14,9 @@ import Dashboard from "@/pages/dashboard";
 import CreateTicket from "@/pages/create-ticket";
 import TicketDetail from "@/pages/ticket-detail";
 import AdminPanel from "@/pages/admin-panel";
+import AdminUsers from "@/pages/admin-users";
+import AdminSettings from "@/pages/admin-settings";
+import AdminEmailLog from "@/pages/admin-email-log";
 import { Redirect } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -59,6 +62,9 @@ function AuthenticatedLayout() {
             <Route path="/tickets/new" component={() => <ProtectedRoute component={CreateTicket} />} />
             <Route path="/tickets/:id" component={() => <ProtectedRoute component={TicketDetail} />} />
             <Route path="/admin" component={() => <ProtectedRoute component={AdminPanel} />} />
+            <Route path="/admin/users" component={() => <ProtectedRoute component={AdminUsers} />} />
+            <Route path="/admin/settings" component={() => <ProtectedRoute component={AdminSettings} />} />
+            <Route path="/admin/email-log" component={() => <ProtectedRoute component={AdminEmailLog} />} />
             <Route component={NotFound} />
           </Switch>
         </div>

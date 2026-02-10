@@ -1,0 +1,326 @@
+You are Codex acting as a senior full-stack engineer.
+
+You are building a complete web app called “BugFlow” (Bug & Feature Tracker) used to manage bug fixes and feature requests across multiple apps. The system must support:
+- User submission of tickets (bugs/features) with status tracking, notes, attachments and app selection
+- Admin + dev dashboards to manage, assign, and update tickets
+- Automatic email notifications on ticket creation and on ticket updates (status/notes/assignment/attachments)
+- A local, zero-setup flat-file database (JSON) and local file storage (uploads)
+- Google OAuth signup/login + email/password signup/login
+- Admin UI configuration for SMTP (no SMTP env vars required)
+
+DO NOT use any external database (no Postgres/MySQL/etc). Everything must run locally in VS Code with no external services needed for data. Google OAuth will require keys in .env.local.
+
+====================================================
+STACK (MUST USE)
+====================================================
+- Next.js 14+ App Router (TypeScript)
+- TailwindCSS for styling
+- NextAuth for auth:
+  - Google Provider (OAuth)
+  - Credentials Provider (email + password)
+- JSON flat-file DB using lowdb (or equivalent) with safe atomic writes
+- nodemailer for SMTP email sending
+- zod for validation
+- bcrypt for password hashing
+- Upload handling with server routes (multipart/form-data) and local filesystem storage
+
+====================================================
+CORE DATA STORAGE (NO EXTERNAL DB)
+====================================================
+Use a JSON file as the single source of truth:
+- Path: ./data/bugflow.json
+Also store uploads in:
+- Path: ./uploads/<ticketId>/
+
+Must:
+- Create ./data and ./uploads automatically if missing
+- Use atomic writes (write temp + rename) to avoid corruption
+- Include a small “db service layer” abstraction (db.ts) with:
+  - read()
+  - write()
+  - update(fn)
+  - file locks or basic mutex to prevent concurrent write collisions during dev
+
+====================================================
+ROLES & USERS
+====================================================
+Roles:
+- user: can create tickets and view/track only their tickets
+- dev: can view tickets assigned to them; can update status and add notes on assigned tickets
+- admin: can view/manage all tickets, configure SMTP, manage users/roles, view email logs
+
+Seed initial admin user (auto-create on first run if not present):
+- username: bugadmin
+- password: Polopolo1211
+- role: admin
+Store password hashed with bcrypt.
+
+Also support normal users:
+- Signup/login with email + password
+- Signup/login with Google OAuth
+
+IMPORTANT:
+- Credentials login must accept either:
+  - email OR username for “bugadmin”
+- If a user logs in via Google, create a user record in JSON if missing.
+
+====================================================
+APPS LIST (TICKET FIELD)
+====================================================
+Ticket app must be a required dropdown with exactly these values:
+- Dispatch
+- Dispatch Admin
+- Admin Panel
+- Driver App
+- Account Web Booker
+- Cash Web Booker
+
+====================================================
+TICKET WORKFLOW
+====================================================
+Ticket Type:
+- Bug | Feature
+
+Priority:
+- Low | Medium | High | Critical
+
+Status values (exact):
+- Open
+- In Progress
+- Waiting on User
+- Resolved
+- Closed
+- Rejected
+
+====================================================
+TICKET MODEL (JSON)
+====================================================
+Ticket:
+- id: uuid
+- type: "Bug" | "Feature"
+- title: string
+- description: string
+- app: one of the Apps List
+- priority: one of priorities
+- status: one of statuses
+- createdAt: ISO string
+- updatedAt: ISO string
+- createdByUserId: string
+- createdByEmail: string snapshot
+- assignedToUserId: string | null
+- assignedToName: string | null snapshot
+- publicNotes: array of { id, body, createdAt, createdByUserId, createdByName }
+- internalNotes: array of { id, body, createdAt, createdByUserId, createdByName } (admin/dev only)
+- attachments: array of {
+    id: uuid,
+    ticketId,
+    originalName,
+    filename,
+    mimeType,
+    size,
+    relativePath,
+    uploadedAt,
+    uploadedByUserId
+  }
+- history: array of {
+    id: uuid,
+    at: ISO string,
+    actorUserId,
+    actorName,
+    kind: "CREATED" | "STATUS_CHANGED" | "ASSIGNED" | "PUBLIC_NOTE" | "INTERNAL_NOTE" | "ATTACHMENT_ADDED",
+    oldValue?: string,
+    newValue?: string,
+    messagePublic?: string,
+    messageInternal?: string
+  }
+
+Users:
+- id: uuid
+- email: string | null
+- username: string | null
+- name: string | null
+- role: "user" | "dev" | "admin"
+- passwordHash: string | null (null for Google-only accounts)
+- createdAt, updatedAt
+- isActive: boolean
+
+Settings:
+- smtp: {
+    enabled: boolean,
+    host: string,
+    port: number,
+    secure: boolean,
+    user: string,
+    pass: string,
+    fromName: string,
+    fromEmail: string
+  }
+
+EmailLog:
+- id: uuid
+- to: string[]
+- cc?: string[]
+- subject: string
+- text: string
+- html: string
+- status: "queued" | "sent" | "failed"
+- error?: string
+- createdAt: ISO string
+- sentAt?: ISO string
+
+Also include static Admin recipient list (default):
+- peter@abacusonline.net
+- teambackendcoders@gmail.com
+Store in settings.adminRecipients as an array so it is editable later, but seed with those two.
+
+====================================================
+EMAIL REQUIREMENTS
+====================================================
+When user submits a NEW ticket:
+1) Email admins (all adminRecipients):
+   - Subject: [BugFlow] New <Bug|Feature> - <Title> (<App>)
+   - Body includes ticket summary, priority, status, description, submitted by, and link to admin ticket page
+2) Email requester (the user):
+   - Confirmation with ticket ID, title, status, link to their ticket page
+
+When ANY of these changes:
+- Status changed
+- Assigned dev changed
+- Public note added
+- Internal note added
+- Attachment added
+Send emails to BOTH:
+- Requester (public-friendly content: status + public notes summary + assignment name)
+- Admins (full content including internal note, plus what changed)
+
+SMTP:
+- MUST be configured in Admin UI (no SMTP env vars)
+- If SMTP is missing/invalid OR sending fails:
+  - do NOT crash
+  - log email as failed in EmailLog with error message
+  - show a warning banner in Admin Settings (“SMTP not configured” / “Last send failed”)
+
+Admin Settings page must include:
+- SMTP form fields (host/port/secure/user/pass/fromName/fromEmail/enabled)
+- Save button
+- “Send test email” button that sends to the currently logged-in admin’s email and logs the result.
+
+====================================================
+FILE UPLOADS
+====================================================
+Attachments:
+- Images only: png, jpg, jpeg, webp
+- Max 10 files per ticket
+- Max size 10MB per file
+- Provide drag-and-drop zone + “Upload” button
+- Store files under ./uploads/<ticketId>/<uuid>.<ext>
+- Save metadata in attachments[]
+- Display thumbnails in ticket detail, clickable to open/download via a protected route.
+
+====================================================
+PAGES / ROUTES (APP ROUTER)
+====================================================
+Public:
+- /login
+- /register
+
+User:
+- /dashboard  (user ticket list + stats + filters)
+- /tickets/new
+- /tickets/[id]
+
+Admin/Dev:
+- /admin  (stats + full ticket list + filters)
+- /admin/tickets/[id]  (manage ticket)
+- /admin/users  (admin-only: manage roles)
+- /admin/settings  (admin-only: SMTP + adminRecipients)
+- /admin/email-log  (admin-only)
+
+Implement role protection:
+- user: can only view own tickets
+- dev: can view/update assigned tickets; can see internal notes; cannot change SMTP/users
+- admin: full access
+
+====================================================
+UI REQUIREMENTS
+====================================================
+Build a modern, clean UI similar to the provided demo screenshots:
+- Left sidebar navigation
+- Dashboard header + stats cards
+- Search bar + filters (status, type, app, priority, assignedTo)
+- Ticket list in table or card-table hybrid
+- Ticket detail page with:
+  - status dropdown
+  - assignment dropdown
+  - public notes editor
+  - internal notes editor
+  - attachments section with drag/drop
+  - history/timeline view
+
+Use Tailwind components; keep it neat and consistent.
+
+====================================================
+NEXTAUTH CONFIG
+====================================================
+- Google provider must use env vars:
+  - GOOGLE_CLIENT_ID
+  - GOOGLE_CLIENT_SECRET
+- NEXTAUTH_URL and NEXTAUTH_SECRET required
+- Redirect URI in Google Cloud must use the standard callback path:
+  - http://localhost:3000/api/auth/callback/google (dev)
+  - https://<domain>/api/auth/callback/google (prod)
+Document this in README.
+
+Credentials provider:
+- Allow login with email/password OR username/password
+- On login success, set session user: { id, role, name, email }
+
+For sessions:
+- Prefer JWT strategy to avoid DB adapter (since we use JSON file DB).
+- Implement callbacks to include role + id in session.
+
+====================================================
+IMPLEMENTATION STRUCTURE
+====================================================
+Create a clean module structure:
+- /lib/db.ts (lowdb init, atomic writes, helpers)
+- /lib/services/users.service.ts
+- /lib/services/tickets.service.ts
+- /lib/services/email.service.ts
+- /lib/services/uploads.service.ts
+- /lib/auth.ts (nextauth options)
+- /app/api/... routes for tickets, uploads, settings, users, email test
+- Reusable UI components in /components
+
+Validation:
+- Use zod schemas for all incoming forms and API payloads.
+
+====================================================
+SEEDING
+====================================================
+On first run:
+- Create ./data/bugflow.json if missing with empty collections
+- Create initial admin user bugadmin with bcrypt hash if not present
+- Seed adminRecipients with:
+  - peter@abacusonline.net
+  - teambackendcoders@gmail.com
+
+Optional: create 1 sample ticket if no tickets exist.
+
+====================================================
+DELIVERABLES
+====================================================
+- Working Next.js project (or integrated into existing)
+- README with:
+  - npm install / npm run dev
+  - create .env.local with Google keys + NextAuth vars
+  - how to set Google OAuth redirect URI
+  - how to login as bugadmin
+  - how to configure SMTP in Admin Settings
+- Ensure all core flows work:
+  1) User registers (Google or email/password) -> creates ticket -> admins get email, user gets confirmation
+  2) Admin updates status/assignment/notes/attachments -> both admins + user get update emails
+  3) SMTP test works; Email Log shows sent/failed attempts
+  4) Dev role can manage assigned tickets only
+
+Now implement this end-to-end.

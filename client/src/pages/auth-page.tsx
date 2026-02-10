@@ -19,6 +19,7 @@ const loginSchema = z.object({
 
 const registerSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
+  name: z.string().min(1, "Full name is required"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string().min(6, "Password must be at least 6 characters"),
@@ -42,7 +43,7 @@ export default function AuthPage() {
 
   const registerForm = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { username: "", email: "", password: "", confirmPassword: "" },
+    defaultValues: { username: "", name: "", email: "", password: "", confirmPassword: "" },
   });
 
   if (user) {
@@ -60,7 +61,7 @@ export default function AuthPage() {
 
   const onRegister = async (data: RegisterForm) => {
     try {
-      await register({ username: data.username, email: data.email, password: data.password });
+      await register({ username: data.username, email: data.email, password: data.password, name: data.name });
       toast({ title: "Account created!", description: "Welcome to BugFlow." });
     } catch (error: any) {
       toast({ title: "Registration failed", description: error.message, variant: "destructive" });
@@ -185,6 +186,19 @@ export default function AuthPage() {
                           <FormLabel>Username</FormLabel>
                           <FormControl>
                             <Input placeholder="Choose a username" data-testid="input-register-username" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={registerForm.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Full Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter your full name" data-testid="input-register-name" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
