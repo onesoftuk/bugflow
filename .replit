@@ -44,4 +44,4 @@ integrations = ["sendgrid:1.0.0", "github:1.0.0"]
 [userenv]
 
 [userenv.shared]
-APP_URL = "https://acebt.replit.app"
+APP_URL = "https://acebt.vercel.app"
