@@ -44,7 +44,7 @@ export async function seedDatabase() {
     console.log("[seed] Seeding database...");
 
     const { db } = await import("./db");
-    const { users } = await import("@shared/schema");
+    const { users } = await import("../shared/schema");
     const { eq } = await import("drizzle-orm");
 
     const adminPassword = await hashPassword("admin123");
