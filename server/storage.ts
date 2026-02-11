@@ -4,7 +4,7 @@ import {
   users, tickets, comments, attachments, ticketHistory, emailLogs, appSettings,
   type User, type InsertUser, type Ticket, type InsertTicket, type Comment, type InsertComment,
   type Attachment, type TicketHistory, type EmailLog, type AppSettings,
-} from "@shared/schema";
+} from "../shared/schema";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;

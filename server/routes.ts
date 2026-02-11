@@ -9,7 +9,7 @@ import {
   registerSchema, loginSchema, insertTicketSchema, updateTicketStatusSchema,
   insertCommentSchema, assignTicketSchema, updateUserRoleSchema, updateSettingsSchema,
   STATUS_LABELS,
-} from "@shared/schema";
+} from "../shared/schema";
 import { z } from "zod";
 import { sendTicketEmail } from "./email";
 
@@ -38,7 +38,7 @@ function requireAdminOrDev(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
+export async function registerRoutes(httpServer: Server | null, app: Express): Promise<Server | null> {
   setupAuth(app);
 
   app.post("/api/auth/register", async (req, res) => {

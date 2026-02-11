@@ -1,11 +1,15 @@
 import sgMail from '@sendgrid/mail';
 import { storage } from "./storage";
-import { STATUS_LABELS, APP_LABELS } from "@shared/schema";
-import type { Ticket, User } from "@shared/schema";
+import { STATUS_LABELS, APP_LABELS } from "../shared/schema";
+import type { Ticket, User } from "../shared/schema";
 
 let connectionSettings: any;
 
 async function getCredentials() {
+  if (process.env.SENDGRID_API_KEY && process.env.SENDGRID_FROM_EMAIL) {
+    return { apiKey: process.env.SENDGRID_API_KEY, email: process.env.SENDGRID_FROM_EMAIL };
+  }
+
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
   const xReplitToken = process.env.REPL_IDENTITY
     ? 'repl ' + process.env.REPL_IDENTITY
@@ -13,7 +17,7 @@ async function getCredentials() {
     ? 'depl ' + process.env.WEB_REPL_RENEWAL
     : null;
 
-  if (!xReplitToken) throw new Error('X_REPLIT_TOKEN not found');
+  if (!xReplitToken) throw new Error('SendGrid not configured. Set SENDGRID_API_KEY and SENDGRID_FROM_EMAIL environment variables.');
 
   connectionSettings = await fetch(
     'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=sendgrid',
