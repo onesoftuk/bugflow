@@ -52155,6 +52155,21 @@ var require_lib7 = __commonJS({
 });
 
 // node_modules/pg/esm/index.mjs
+var esm_exports = {};
+__export(esm_exports, {
+  Client: () => Client,
+  Connection: () => Connection,
+  DatabaseError: () => DatabaseError,
+  Pool: () => Pool,
+  Query: () => Query,
+  Result: () => Result,
+  TypeOverrides: () => TypeOverrides,
+  default: () => esm_default,
+  defaults: () => defaults,
+  escapeIdentifier: () => escapeIdentifier,
+  escapeLiteral: () => escapeLiteral,
+  types: () => types
+});
 var import_lib, Client, Pool, Connection, types, Query, DatabaseError, escapeIdentifier, escapeLiteral, Result, TypeOverrides, defaults, esm_default;
 var init_esm = __esm({
   "node_modules/pg/esm/index.mjs"() {
@@ -64838,15 +64853,27 @@ async function comparePasswords(supplied, stored) {
   const keyBuffer = Buffer.from(hashedPassword, "hex");
   return timingSafeEqual(buf, keyBuffer);
 }
-function setupAuth(app2) {
+async function setupAuth(app2) {
   const PgSession2 = (0, import_connect_pg_simple.default)(import_express_session.default);
   const isProduction = process.env.NODE_ENV === "production" || !!process.env.VERCEL;
+  const { Pool: Pool3 } = await Promise.resolve().then(() => (init_esm(), esm_exports));
+  const pool2 = new Pool3({ connectionString: process.env.DATABASE_URL });
+  await pool2.query(`
+    CREATE TABLE IF NOT EXISTS "session" (
+      "sid" varchar NOT NULL COLLATE "default",
+      "sess" json NOT NULL,
+      "expire" timestamp(6) NOT NULL,
+      CONSTRAINT "session_pkey" PRIMARY KEY ("sid")
+    ) WITH (OIDS=FALSE);
+    CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
+  `);
+  await pool2.end();
   app2.set("trust proxy", 1);
   app2.use(
     (0, import_express_session.default)({
       store: new PgSession2({
         conString: process.env.DATABASE_URL,
-        createTableIfMissing: true
+        createTableIfMissing: false
       }),
       secret: process.env.SESSION_SECRET || "bugflow-secret-key",
       resave: false,
@@ -81702,7 +81729,7 @@ function requireAdminOrDev(req, res, next) {
   next();
 }
 async function registerRoutes(httpServer, app2) {
-  setupAuth(app2);
+  await setupAuth(app2);
   app2.post("/api/auth/register", async (req, res) => {
     try {
       const data = registerSchema.parse(req.body);

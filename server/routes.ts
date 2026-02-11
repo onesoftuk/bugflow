@@ -39,7 +39,7 @@ function requireAdminOrDev(req: Request, res: Response, next: NextFunction) {
 }
 
 export async function registerRoutes(httpServer: Server | null, app: Express): Promise<Server | null> {
-  setupAuth(app);
+  await setupAuth(app);
 
   app.post("/api/auth/register", async (req, res) => {
     try {
