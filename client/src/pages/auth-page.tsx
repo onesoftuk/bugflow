@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { Sparkles, ArrowRight, Shield, Users, Bell } from "lucide-react";
+import { SiGoogle } from "react-icons/si";
 import logoImg from "@assets/favicon_1770388281198.ico";
 import { Redirect } from "wouter";
 
@@ -19,6 +20,7 @@ const loginSchema = z.object({
 
 const registerSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
+  name: z.string().min(1, "Full name is required"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string().min(6, "Password must be at least 6 characters"),
@@ -42,7 +44,7 @@ export default function AuthPage() {
 
   const registerForm = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { username: "", email: "", password: "", confirmPassword: "" },
+    defaultValues: { username: "", name: "", email: "", password: "", confirmPassword: "" },
   });
 
   if (user) {
@@ -60,7 +62,7 @@ export default function AuthPage() {
 
   const onRegister = async (data: RegisterForm) => {
     try {
-      await register({ username: data.username, email: data.email, password: data.password });
+      await register({ username: data.username, email: data.email, password: data.password, name: data.name });
       toast({ title: "Account created!", description: "Welcome to BugFlow." });
     } catch (error: any) {
       toast({ title: "Registration failed", description: error.message, variant: "destructive" });
@@ -192,6 +194,19 @@ export default function AuthPage() {
                     />
                     <FormField
                       control={registerForm.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Full Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter your full name" data-testid="input-register-name" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={registerForm.control}
                       name="email"
                       render={({ field }) => (
                         <FormItem>
@@ -241,6 +256,26 @@ export default function AuthPage() {
                   </form>
                 </Form>
               )}
+
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => { window.location.href = "/api/auth/google"; }}
+                data-testid="button-google-login"
+              >
+                <SiGoogle className="mr-2 h-4 w-4" />
+                Sign in with Google
+              </Button>
 
               <div className="mt-6 text-center">
                 <button

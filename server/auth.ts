@@ -1,5 +1,6 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
@@ -70,6 +71,90 @@ export function setupAuth(app: Express) {
       }
     })
   );
+
+  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    const callbackURL = process.env.REPLIT_DEV_DOMAIN
+      ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/auth/google/callback`
+      : process.env.REPL_SLUG
+        ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/api/auth/google/callback`
+        : "http://localhost:5000/api/auth/google/callback";
+
+    passport.use(
+      new GoogleStrategy(
+        {
+          clientID: process.env.GOOGLE_CLIENT_ID,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+          callbackURL,
+          scope: ["profile", "email"],
+        },
+        async (_accessToken, _refreshToken, profile, done) => {
+          try {
+            const googleId = profile.id;
+            const email = profile.emails?.[0]?.value;
+            const name = profile.displayName || `${profile.name?.givenName || ""} ${profile.name?.familyName || ""}`.trim();
+            const profileImageUrl = profile.photos?.[0]?.value;
+
+            let user = await storage.getUserByGoogleId(googleId);
+            if (user) {
+              if (!user.isActive) {
+                return done(null, false, { message: "Account is deactivated" } as any);
+              }
+              return done(null, user);
+            }
+
+            if (email) {
+              user = await storage.getUserByEmail(email);
+              if (user) {
+                if (!user.isActive) {
+                  return done(null, false, { message: "Account is deactivated" } as any);
+                }
+                await storage.linkGoogleAccount(user.id, googleId, profileImageUrl);
+                const updatedUser = await storage.getUser(user.id);
+                return done(null, updatedUser || user);
+              }
+            }
+
+            const randomPassword = randomBytes(32).toString("hex");
+            const hashedPw = await hashPassword(randomPassword);
+            const baseUsername = email ? email.split("@")[0] : `user_${googleId.slice(0, 8)}`;
+            let username = baseUsername;
+            let counter = 1;
+            while (await storage.getUserByUsername(username)) {
+              username = `${baseUsername}${counter}`;
+              counter++;
+            }
+
+            const newUser = await storage.createUser({
+              username,
+              email: email || `${googleId}@google.user`,
+              password: hashedPw,
+              name: name || null,
+            });
+
+            await storage.linkGoogleAccount(newUser.id, googleId, profileImageUrl);
+            const finalUser = await storage.getUser(newUser.id);
+            return done(null, finalUser || newUser);
+          } catch (error) {
+            return done(error as Error);
+          }
+        }
+      )
+    );
+
+    app.get("/api/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+
+    app.get(
+      "/api/auth/google/callback",
+      passport.authenticate("google", { failureRedirect: "/auth?error=google_failed" }),
+      (_req, res) => {
+        res.redirect("/");
+      }
+    );
+
+    console.log("[auth] Google OAuth configured with callback:", callbackURL);
+  } else {
+    console.log("[auth] Google OAuth not configured (missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET)");
+  }
 
   passport.serializeUser((user, done) => {
     done(null, user.id);
