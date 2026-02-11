@@ -6,7 +6,7 @@
     { "source": "/(.*)", "destination": "/" }
   ],
   "functions": {
-    "api/index.ts": {
+    "api/index.mjs": {
       "maxDuration": 30
     }
   }

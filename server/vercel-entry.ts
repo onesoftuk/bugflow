@@ -1,5 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "../server/routes";
+import { registerRoutes } from "./routes";
 
 const app = express();
 
@@ -15,7 +15,7 @@ async function ensureInit() {
   try {
     await registerRoutes(null, app);
     if (process.env.SEED_DATABASE === "true") {
-      const { seedDatabase } = await import("../server/seed");
+      const { seedDatabase } = await import("./seed");
       await seedDatabase();
     }
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
