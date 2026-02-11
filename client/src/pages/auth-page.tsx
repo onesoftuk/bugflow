@@ -75,8 +75,8 @@ export default function AuthPage() {
         <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary to-primary/80" />
         <div className="relative z-10 flex flex-col justify-center p-12 text-primary-foreground">
           <div className="flex items-center gap-3 mb-8">
-            <img src={logoImg} alt="BugFlow" className="h-10 w-10 rounded-md" />
-            <h1 className="text-3xl font-bold tracking-tight">BugFlow</h1>
+            <img src={logoImg} alt="Ace Taxis - Bug Flow" className="h-10 w-10 rounded-md" />
+            <h1 className="text-3xl font-bold tracking-tight">Ace Taxis - Bug Flow</h1>
           </div>
           <p className="text-xl font-medium mb-3 text-primary-foreground/90">
             Track bugs. Request features. Ship better software.
@@ -120,8 +120,8 @@ export default function AuthPage() {
       <div className="flex-1 flex items-center justify-center p-6 bg-background">
         <div className="w-full max-w-md">
           <div className="flex items-center gap-3 mb-8 lg:hidden">
-            <img src={logoImg} alt="BugFlow" className="h-8 w-8 rounded-md" />
-            <h1 className="text-2xl font-bold tracking-tight">BugFlow</h1>
+            <img src={logoImg} alt="Ace Taxis - Bug Flow" className="h-8 w-8 rounded-md" />
+            <h1 className="text-2xl font-bold tracking-tight">Ace Taxis - Bug Flow</h1>
           </div>
 
           <Card>
