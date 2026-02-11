@@ -10,10 +10,12 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByGoogleId(googleId: string): Promise<User | undefined>;
   getAllUsers(): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
   updateUserRole(id: string, role: string): Promise<User | undefined>;
   updateUserActive(id: string, isActive: boolean): Promise<User | undefined>;
+  linkGoogleAccount(userId: string, googleId: string, profileImageUrl?: string): Promise<User | undefined>;
 
   getTicketsByUserId(userId: string): Promise<Ticket[]>;
   getTicketsAssignedToUserId(userId: string): Promise<Ticket[]>;
@@ -54,6 +56,18 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async getUserByGoogleId(googleId: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.googleId, googleId));
+    return user;
+  }
+
+  async linkGoogleAccount(userId: string, googleId: string, profileImageUrl?: string): Promise<User | undefined> {
+    const updates: any = { googleId, updatedAt: new Date() };
+    if (profileImageUrl) updates.profileImageUrl = profileImageUrl;
+    const [user] = await db.update(users).set(updates).where(eq(users.id, userId)).returning();
     return user;
   }
 
