@@ -3,7 +3,6 @@ import { createServer, type Server } from "http";
 import passport from "passport";
 import multer from "multer";
 import path from "path";
-import fs from "fs";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
 import {
@@ -14,21 +13,8 @@ import {
 import { z } from "zod";
 import { sendTicketEmail } from "./email";
 
-const uploadsDir = path.join(process.cwd(), "uploads");
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-
 const upload = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => {
-      const ticketDir = path.join(uploadsDir, req.params.id);
-      if (!fs.existsSync(ticketDir)) fs.mkdirSync(ticketDir, { recursive: true });
-      cb(null, ticketDir);
-    },
-    filename: (req, file, cb) => {
-      const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}${path.extname(file.originalname)}`;
-      cb(null, uniqueName);
-    },
-  }),
+  storage: multer.memoryStorage(),
   fileFilter: (req, file, cb) => {
     const allowed = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
     if (allowed.includes(file.mimetype)) cb(null, true);
@@ -263,7 +249,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/api/tickets/:id/attachments", requireAuth, async (req, res) => {
     try {
       const atts = await storage.getAttachmentsByTicketId(req.params.id);
-      res.json(atts);
+      const safeAtts = atts.map(({ fileData, ...rest }) => rest);
+      res.json(safeAtts);
     } catch { res.status(500).json({ message: "Failed to fetch attachments" }); }
   });
 
@@ -277,15 +264,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (existing.length + files.length > 10) return res.status(400).json({ message: "Max 10 attachments per ticket" });
       const results = [];
       for (const file of files) {
+        const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}${path.extname(file.originalname)}`;
+        const fileData = file.buffer.toString("base64");
         const att = await storage.createAttachment({
           ticketId: req.params.id,
           originalName: file.originalname,
-          filename: file.filename,
+          filename: uniqueName,
           mimeType: file.mimetype,
           size: file.size,
+          fileData,
           uploadedByUserId: req.user!.id,
         });
-        results.push(att);
+        const { fileData: _, ...safeAtt } = att;
+        results.push(safeAtt);
       }
       await storage.createHistory({
         ticketId: req.params.id,
@@ -304,11 +295,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const att = await storage.getAttachmentById(req.params.id);
       if (!att) return res.status(404).json({ message: "Attachment not found" });
-      const filePath = path.join(uploadsDir, att.ticketId, att.filename);
-      if (!fs.existsSync(filePath)) return res.status(404).json({ message: "File not found" });
+      if (!att.fileData) return res.status(404).json({ message: "File data not found" });
+      const buffer = Buffer.from(att.fileData, "base64");
       res.setHeader("Content-Type", att.mimeType);
       res.setHeader("Content-Disposition", `inline; filename="${att.originalName}"`);
-      fs.createReadStream(filePath).pipe(res);
+      res.setHeader("Content-Length", buffer.length.toString());
+      res.send(buffer);
     } catch { res.status(500).json({ message: "Failed to download" }); }
   });
 
