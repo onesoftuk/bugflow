@@ -295,6 +295,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const att = await storage.getAttachmentById(req.params.id);
       if (!att) return res.status(404).json({ message: "Attachment not found" });
+      const ticket = await storage.getTicketById(att.ticketId);
+      if (!ticket) return res.status(404).json({ message: "Ticket not found" });
+      if (ticket.userId !== req.user!.id && req.user!.role !== "admin" && req.user!.role !== "dev") {
+        return res.status(403).json({ message: "Not authorized" });
+      }
       if (!att.fileData) return res.status(404).json({ message: "File data not found" });
       const buffer = Buffer.from(att.fileData, "base64");
       res.setHeader("Content-Type", att.mimeType);

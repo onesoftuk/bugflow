@@ -1,7 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
 import { registerRoutes } from "../server/routes";
-import path from "path";
 
 const app = express();
 const httpServer = createServer(app);
@@ -15,25 +14,28 @@ app.use(
 );
 app.use(express.urlencoded({ extended: false }));
 
-let initialized = false;
+let initPromise: Promise<void> | null = null;
 
-async function ensureInitialized() {
-  if (initialized) return;
-  initialized = true;
-  await registerRoutes(httpServer, app);
-  const { seedDatabase } = await import("../server/seed");
-  await seedDatabase();
-  app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-    if (res.headersSent) return next(err);
-    return res.status(status).json({ message });
-  });
+function getInitPromise() {
+  if (!initPromise) {
+    initPromise = (async () => {
+      await registerRoutes(httpServer, app);
+      const { seedDatabase } = await import("../server/seed");
+      await seedDatabase();
+      app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
+        const status = err.status || err.statusCode || 500;
+        const message = err.message || "Internal Server Error";
+        if (res.headersSent) return next(err);
+        return res.status(status).json({ message });
+      });
+    })();
+  }
+  return initPromise;
 }
 
-app.use(async (req, res, next) => {
-  await ensureInitialized();
-  next();
-});
+const handler = async (req: any, res: any) => {
+  await getInitPromise();
+  app(req, res);
+};
 
-export default app;
+export default handler;
