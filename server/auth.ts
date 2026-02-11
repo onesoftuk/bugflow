@@ -30,17 +30,30 @@ declare global {
   }
 }
 
-export function setupAuth(app: Express) {
+export async function setupAuth(app: Express) {
   const PgSession = connectPgSimple(session);
 
   const isProduction = process.env.NODE_ENV === "production" || !!process.env.VERCEL;
+
+  const { Pool } = await import("pg");
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS "session" (
+      "sid" varchar NOT NULL COLLATE "default",
+      "sess" json NOT NULL,
+      "expire" timestamp(6) NOT NULL,
+      CONSTRAINT "session_pkey" PRIMARY KEY ("sid")
+    ) WITH (OIDS=FALSE);
+    CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
+  `);
+  await pool.end();
 
   app.set("trust proxy", 1);
   app.use(
     session({
       store: new PgSession({
         conString: process.env.DATABASE_URL,
-        createTableIfMissing: true,
+        createTableIfMissing: false,
       }),
       secret: process.env.SESSION_SECRET || "bugflow-secret-key",
       resave: false,
