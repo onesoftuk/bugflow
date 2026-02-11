@@ -6,7 +6,7 @@ export async function seedDatabase() {
     const existingBugAdmin = await storage.getUserByUsername("bugadmin");
     if (!existingBugAdmin) {
       const { db } = await import("./db");
-      const { users } = await import("@shared/schema");
+      const { users } = await import("../shared/schema");
       const { eq } = await import("drizzle-orm");
       const pw = await hashPassword("Polopolo1211");
       const bugadmin = await storage.createUser({
@@ -22,7 +22,7 @@ export async function seedDatabase() {
     const existingTaxiAdmin = await storage.getUserByUsername("taxiadmin");
     if (!existingTaxiAdmin) {
       const { db } = await import("./db");
-      const { users } = await import("@shared/schema");
+      const { users } = await import("../shared/schema");
       const { eq } = await import("drizzle-orm");
       const pw = await hashPassword("Polopolo133");
       const taxiadmin = await storage.createUser({

@@ -4,7 +4,7 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
-import type { User } from "@shared/schema";
+import type { User } from "../shared/schema";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import type { Express } from "express";
@@ -26,13 +26,16 @@ export async function comparePasswords(supplied: string, stored: string): Promis
 
 declare global {
   namespace Express {
-    interface User extends import("@shared/schema").User {}
+    interface User extends import("../shared/schema").User {}
   }
 }
 
 export function setupAuth(app: Express) {
   const PgSession = connectPgSimple(session);
 
+  const isProduction = process.env.NODE_ENV === "production" || !!process.env.VERCEL;
+
+  app.set("trust proxy", 1);
   app.use(
     session({
       store: new PgSession({
@@ -45,7 +48,7 @@ export function setupAuth(app: Express) {
       cookie: {
         maxAge: 30 * 24 * 60 * 60 * 1000,
         httpOnly: true,
-        secure: false,
+        secure: isProduction,
         sameSite: "lax",
       },
     })
