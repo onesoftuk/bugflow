@@ -56,9 +56,9 @@ export function AppSidebar() {
       <SidebarHeader className="p-4">
         <Link href="/">
           <div className="flex items-center gap-3 cursor-pointer" data-testid="link-home">
-            <img src={logoImg} alt="BugFlow" className="h-8 w-8 rounded-md" />
+            <img src={logoImg} alt="Ace Taxis - Bug Flow" className="h-8 w-8 rounded-md" />
             <div>
-              <h2 className="font-bold text-lg leading-none">BugFlow</h2>
+              <h2 className="font-bold text-lg leading-none">Ace Taxis - Bug Flow</h2>
               <p className="text-xs text-muted-foreground mt-0.5">Issue Tracker</p>
             </div>
           </div>
