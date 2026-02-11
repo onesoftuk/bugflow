@@ -1,5 +1,5 @@
 import { LayoutDashboard, PlusCircle, Settings, LogOut, ShieldCheck, Users, Mail } from "lucide-react";
-import logoImg from "@assets/favicon_1770388281198.ico";
+import logoImg from "../assets/favicon.ico";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/lib/auth";
 import {

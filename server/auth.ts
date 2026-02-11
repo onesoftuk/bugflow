@@ -73,11 +73,11 @@ export function setupAuth(app: Express) {
   );
 
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-    const callbackURL = process.env.REPLIT_DEV_DOMAIN
-      ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/auth/google/callback`
-      : process.env.REPL_SLUG
-        ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/api/auth/google/callback`
-        : "http://localhost:5000/api/auth/google/callback";
+    const baseURL = process.env.APP_URL
+      || (process.env.REPLIT_DEPLOYMENT ? `https://${process.env.REPLIT_DEV_DOMAIN}` : null)
+      || (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : null)
+      || "http://localhost:5000";
+    const callbackURL = `${baseURL}/api/auth/google/callback`;
 
     passport.use(
       new GoogleStrategy(

@@ -10,7 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { Sparkles, ArrowRight, Shield, Users, Bell } from "lucide-react";
 import { SiGoogle } from "react-icons/si";
-import logoImg from "@assets/favicon_1770388281198.ico";
+import logoImg from "../assets/favicon.ico";
 import { Redirect } from "wouter";
 
 const loginSchema = z.object({
