@@ -31,6 +31,7 @@ export default function CreateTicket() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<FormData>({
@@ -44,8 +45,7 @@ export default function CreateTicket() {
     },
   });
 
-  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files || []);
+  function addFiles(files: File[]) {
     const valid: File[] = [];
     for (const file of files) {
       if (!ACCEPTED_TYPES.includes(file.type)) {
@@ -60,7 +60,27 @@ export default function CreateTicket() {
     }
     const combined = [...selectedFiles, ...valid].slice(0, MAX_FILES);
     setSelectedFiles(combined);
+  }
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    addFiles(Array.from(e.target.files || []));
     if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragging(false);
+    addFiles(Array.from(e.dataTransfer.files));
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragging(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragging(false);
   }
 
   function removeFile(index: number) {
@@ -241,20 +261,32 @@ export default function CreateTicket() {
 
                 <div className="space-y-3">
                   <FormLabel>Attachments</FormLabel>
-                  <FormDescription>
-                    Upload images (PNG, JPG, WebP) or videos (MP4, WebM, MOV) up to 10MB each. Max 10 files.
-                  </FormDescription>
-                  <div className="flex items-center gap-3">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={selectedFiles.length >= MAX_FILES}
-                      data-testid="button-attach-files"
-                    >
-                      <Paperclip className="h-4 w-4 mr-2" />
-                      Attach Files
-                    </Button>
+                  <div
+                    onDrop={handleDrop}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onClick={() => selectedFiles.length < MAX_FILES && fileInputRef.current?.click()}
+                    className={`relative flex flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed p-6 cursor-pointer transition-colors ${
+                      isDragging
+                        ? "border-primary bg-primary/5"
+                        : "border-muted-foreground/25 hover:border-muted-foreground/50"
+                    }`}
+                    data-testid="dropzone-files"
+                  >
+                    <Paperclip className="h-8 w-8 text-muted-foreground" />
+                    <div className="text-center">
+                      <p className="text-sm font-medium">
+                        {isDragging ? "Drop files here" : "Drag & drop files here or click to browse"}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        PNG, JPG, WebP, MP4, WebM, MOV — up to 10MB each, max 10 files
+                      </p>
+                    </div>
+                    {selectedFiles.length > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        {selectedFiles.length} / {MAX_FILES} files selected
+                      </span>
+                    )}
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -264,11 +296,6 @@ export default function CreateTicket() {
                       className="hidden"
                       data-testid="input-file-upload"
                     />
-                    {selectedFiles.length > 0 && (
-                      <span className="text-sm text-muted-foreground">
-                        {selectedFiles.length} file{selectedFiles.length !== 1 ? "s" : ""} selected
-                      </span>
-                    )}
                   </div>
                   {selectedFiles.length > 0 && (
                     <div className="space-y-2">
