@@ -81784,8 +81784,8 @@ async function registerRoutes(httpServer, app2) {
   });
   app2.get("/api/tickets", requireAuth, async (req, res) => {
     try {
-      const userTickets = await storage.getTicketsByUserId(req.user.id);
-      res.json(userTickets);
+      const allTickets = await storage.getAllTickets();
+      res.json(allTickets);
     } catch {
       res.status(500).json({ message: "Failed to fetch tickets" });
     }
@@ -81802,12 +81802,6 @@ async function registerRoutes(httpServer, app2) {
     try {
       const ticket = await storage.getTicketById(req.params.id);
       if (!ticket) return res.status(404).json({ message: "Ticket not found" });
-      if (ticket.userId !== req.user.id && req.user.role !== "admin" && req.user.role !== "dev") {
-        return res.status(403).json({ message: "Not authorized" });
-      }
-      if (req.user.role === "dev" && ticket.userId !== req.user.id && ticket.assignedToUserId !== req.user.id) {
-        return res.status(403).json({ message: "Not authorized" });
-      }
       res.json(ticket);
     } catch {
       res.status(500).json({ message: "Failed to fetch ticket" });
