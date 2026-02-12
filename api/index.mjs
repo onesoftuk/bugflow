@@ -64857,16 +64857,27 @@ async function setupAuth(app2) {
   const PgSession2 = (0, import_connect_pg_simple.default)(import_express_session.default);
   const isProduction = process.env.NODE_ENV === "production" || !!process.env.VERCEL;
   const { Pool: Pool3 } = await Promise.resolve().then(() => (init_esm(), esm_exports));
-  const pool2 = new Pool3({ connectionString: process.env.DATABASE_URL });
-  await pool2.query(`
-    CREATE TABLE IF NOT EXISTS "session" (
-      "sid" varchar NOT NULL COLLATE "default",
-      "sess" json NOT NULL,
-      "expire" timestamp(6) NOT NULL,
-      CONSTRAINT "session_pkey" PRIMARY KEY ("sid")
-    ) WITH (OIDS=FALSE);
-    CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
-  `);
+  const pool2 = new Pool3({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.DATABASE_URL?.includes("neon.tech") ? { rejectUnauthorized: false } : void 0
+  });
+  try {
+    await pool2.query(`
+      CREATE TABLE IF NOT EXISTS "session" (
+        "sid" varchar NOT NULL COLLATE "default",
+        "sess" json NOT NULL,
+        "expire" timestamp(6) NOT NULL,
+        CONSTRAINT "session_pkey" PRIMARY KEY ("sid")
+      );
+    `);
+    await pool2.query(`
+      CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
+    `);
+  } catch (e) {
+    if (!e.message?.includes("already exists")) {
+      console.error("Session table creation error:", e.message);
+    }
+  }
   await pool2.end();
   app2.set("trust proxy", 1);
   app2.use(

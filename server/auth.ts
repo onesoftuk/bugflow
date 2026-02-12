@@ -36,16 +36,27 @@ export async function setupAuth(app: Express) {
   const isProduction = process.env.NODE_ENV === "production" || !!process.env.VERCEL;
 
   const { Pool } = await import("pg");
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS "session" (
-      "sid" varchar NOT NULL COLLATE "default",
-      "sess" json NOT NULL,
-      "expire" timestamp(6) NOT NULL,
-      CONSTRAINT "session_pkey" PRIMARY KEY ("sid")
-    ) WITH (OIDS=FALSE);
-    CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
-  `);
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.DATABASE_URL?.includes("neon.tech") ? { rejectUnauthorized: false } : undefined,
+  });
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS "session" (
+        "sid" varchar NOT NULL COLLATE "default",
+        "sess" json NOT NULL,
+        "expire" timestamp(6) NOT NULL,
+        CONSTRAINT "session_pkey" PRIMARY KEY ("sid")
+      );
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
+    `);
+  } catch (e: any) {
+    if (!e.message?.includes("already exists")) {
+      console.error("Session table creation error:", e.message);
+    }
+  }
   await pool.end();
 
   app.set("trust proxy", 1);
