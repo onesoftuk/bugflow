@@ -1,3 +1,4 @@
+import { useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
@@ -12,8 +13,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Send, Bug, Sparkles } from "lucide-react";
+import { ArrowLeft, Send, Bug, Sparkles, Paperclip, X, FileImage, FileVideo } from "lucide-react";
 import { Link } from "wouter";
+
+const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp", "video/mp4", "video/webm", "video/quicktime"];
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_FILES = 10;
 
 const formSchema = insertTicketSchema.extend({
   title: z.string().min(5, "Title must be at least 5 characters").max(200, "Title too long"),
@@ -25,6 +30,8 @@ type FormData = z.infer<typeof formSchema>;
 export default function CreateTicket() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -37,10 +44,43 @@ export default function CreateTicket() {
     },
   });
 
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || []);
+    const valid: File[] = [];
+    for (const file of files) {
+      if (!ACCEPTED_TYPES.includes(file.type)) {
+        toast({ title: "Invalid file type", description: `${file.name} is not a supported image or video format`, variant: "destructive" });
+        continue;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        toast({ title: "File too large", description: `${file.name} exceeds 10MB limit`, variant: "destructive" });
+        continue;
+      }
+      valid.push(file);
+    }
+    const combined = [...selectedFiles, ...valid].slice(0, MAX_FILES);
+    setSelectedFiles(combined);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function removeFile(index: number) {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  }
+
   const createMutation = useMutation({
     mutationFn: async (data: FormData) => {
       const res = await apiRequest("POST", "/api/tickets", data);
-      return res.json();
+      const ticket = await res.json();
+      if (selectedFiles.length > 0) {
+        const uploadData = new globalThis.FormData();
+        selectedFiles.forEach((file) => uploadData.append("files", file));
+        await fetch(`/api/tickets/${ticket.id}/attachments`, {
+          method: "POST",
+          body: uploadData,
+          credentials: "include",
+        });
+      }
+      return ticket;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tickets"] });
@@ -198,6 +238,76 @@ export default function CreateTicket() {
                     </FormItem>
                   )}
                 />
+
+                <div className="space-y-3">
+                  <FormLabel>Attachments</FormLabel>
+                  <FormDescription>
+                    Upload images (PNG, JPG, WebP) or videos (MP4, WebM, MOV) up to 10MB each. Max 10 files.
+                  </FormDescription>
+                  <div className="flex items-center gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={selectedFiles.length >= MAX_FILES}
+                      data-testid="button-attach-files"
+                    >
+                      <Paperclip className="h-4 w-4 mr-2" />
+                      Attach Files
+                    </Button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      multiple
+                      accept="image/png,image/jpeg,image/jpg,image/webp,video/mp4,video/webm,video/quicktime"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                      data-testid="input-file-upload"
+                    />
+                    {selectedFiles.length > 0 && (
+                      <span className="text-sm text-muted-foreground">
+                        {selectedFiles.length} file{selectedFiles.length !== 1 ? "s" : ""} selected
+                      </span>
+                    )}
+                  </div>
+                  {selectedFiles.length > 0 && (
+                    <div className="space-y-2">
+                      {selectedFiles.map((file, index) => (
+                        <div
+                          key={`${file.name}-${index}`}
+                          className="flex items-center gap-3 rounded-md border p-2"
+                          data-testid={`file-preview-${index}`}
+                        >
+                          {file.type.startsWith("video/") ? (
+                            <FileVideo className="h-5 w-5 text-muted-foreground shrink-0" />
+                          ) : (
+                            <FileImage className="h-5 w-5 text-muted-foreground shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm truncate">{file.name}</p>
+                            <p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                          </div>
+                          {file.type.startsWith("image/") && (
+                            <img
+                              src={URL.createObjectURL(file)}
+                              alt={file.name}
+                              className="h-10 w-10 rounded object-cover shrink-0"
+                            />
+                          )}
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => removeFile(index)}
+                            data-testid={`button-remove-file-${index}`}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
                 <div className="flex justify-end gap-3">
                   <Link href="/">

@@ -16,9 +16,9 @@ import { sendTicketEmail } from "./email";
 const upload = multer({
   storage: multer.memoryStorage(),
   fileFilter: (req, file, cb) => {
-    const allowed = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+    const allowed = ["image/png", "image/jpeg", "image/jpg", "image/webp", "video/mp4", "video/webm", "video/quicktime"];
     if (allowed.includes(file.mimetype)) cb(null, true);
-    else cb(new Error("Only PNG, JPG, and WebP images are allowed"));
+    else cb(new Error("Only PNG, JPG, WebP images and MP4, WebM, MOV videos are allowed"));
   },
   limits: { fileSize: 10 * 1024 * 1024 },
 });
