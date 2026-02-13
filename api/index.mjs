@@ -61081,6 +61081,13 @@ var init_storage = __esm({
         const [updated] = await db.update(tickets).set({ assignedToUserId, assignedToName, updatedAt: /* @__PURE__ */ new Date() }).where(eq(tickets.id, id)).returning();
         return updated;
       }
+      async deleteTicket(id) {
+        await db.delete(attachments).where(eq(attachments.ticketId, id));
+        await db.delete(comments).where(eq(comments.ticketId, id));
+        await db.delete(ticketHistory).where(eq(ticketHistory.ticketId, id));
+        await db.delete(emailLogs).where(eq(emailLogs.ticketId, id));
+        await db.delete(tickets).where(eq(tickets.id, id));
+      }
       async getCommentsByTicketId(ticketId) {
         const result = await db.select({
           id: comments.id,
@@ -81818,6 +81825,16 @@ async function registerRoutes(httpServer, app2) {
       res.json(ticket);
     } catch {
       res.status(500).json({ message: "Failed to fetch ticket" });
+    }
+  });
+  app2.delete("/api/tickets/:id", requireAdmin, async (req, res) => {
+    try {
+      const ticket = await storage.getTicketById(req.params.id);
+      if (!ticket) return res.status(404).json({ message: "Ticket not found" });
+      await storage.deleteTicket(req.params.id);
+      res.json({ message: "Ticket deleted" });
+    } catch {
+      res.status(500).json({ message: "Failed to delete ticket" });
     }
   });
   app2.post("/api/tickets", requireAuth, async (req, res) => {

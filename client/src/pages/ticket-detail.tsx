@@ -7,6 +7,7 @@ import { STATUS_LABELS, APP_LABELS, PRIORITY_LABELS } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -16,10 +17,11 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft, Bug, Sparkles, Clock, Send, ArrowRightLeft, MessageSquare,
-  Paperclip, Upload, History, UserCheck, Lock, Image,
+  Paperclip, Upload, History, UserCheck, Lock, Image, Trash2,
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { useState, useRef, useCallback } from "react";
+import { useLocation } from "wouter";
 
 const statusColors: Record<string, string> = {
   open: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
@@ -44,9 +46,12 @@ export default function TicketDetail() {
   const [, params] = useRoute("/tickets/:id");
   const { user } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [comment, setComment] = useState("");
   const [isInternal, setIsInternal] = useState(false);
   const [newStatus, setNewStatus] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
   const isAdminOrDev = user?.role === "admin" || user?.role === "dev";
@@ -154,6 +159,21 @@ export default function TicketDetail() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("DELETE", `/api/tickets/${ticketId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tickets"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/tickets"] });
+      toast({ title: "Ticket deleted" });
+      setLocation("/");
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to delete ticket", description: error.message, variant: "destructive" });
+    },
+  });
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragActive(false);
@@ -198,7 +218,54 @@ export default function TicketDetail() {
               Created {formatDistanceToNow(new Date(ticket.createdAt), { addSuffix: true })}
             </p>
           </div>
+          {isAdmin && (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="text-destructive shrink-0"
+              onClick={() => setShowDeleteDialog(true)}
+              data-testid="button-delete-ticket"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
+
+        {showDeleteDialog && (
+          <Card>
+            <CardContent className="p-4 space-y-3">
+              <p className="text-sm font-medium text-destructive">
+                Are you sure you want to permanently delete this ticket? This will remove all comments, attachments, and history.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Type <strong>DELETE</strong> to confirm:
+              </p>
+              <Input
+                value={deleteConfirm}
+                onChange={(e) => setDeleteConfirm(e.target.value)}
+                placeholder="Type DELETE to confirm"
+                data-testid="input-delete-confirm"
+              />
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => { setShowDeleteDialog(false); setDeleteConfirm(""); }}
+                  data-testid="button-cancel-delete"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  disabled={deleteConfirm !== "DELETE" || deleteMutation.isPending}
+                  onClick={() => deleteMutation.mutate()}
+                  data-testid="button-confirm-delete"
+                >
+                  {deleteMutation.isPending ? "Deleting..." : "Delete Ticket"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardContent className="p-6">

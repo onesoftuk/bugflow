@@ -24,6 +24,7 @@ export interface IStorage {
   createTicket(ticket: InsertTicket & { userId: string }): Promise<Ticket>;
   updateTicketStatus(id: string, status: string): Promise<Ticket | undefined>;
   assignTicket(id: string, assignedToUserId: string | null, assignedToName: string | null): Promise<Ticket | undefined>;
+  deleteTicket(id: string): Promise<void>;
 
   getCommentsByTicketId(ticketId: string): Promise<(Comment & { user: { username: string; role: string } })[]>;
   createComment(comment: InsertComment & { userId: string; isStatusChange?: boolean }): Promise<Comment>;
@@ -163,6 +164,14 @@ export class DatabaseStorage implements IStorage {
       .where(eq(tickets.id, id))
       .returning();
     return updated;
+  }
+
+  async deleteTicket(id: string): Promise<void> {
+    await db.delete(attachments).where(eq(attachments.ticketId, id));
+    await db.delete(comments).where(eq(comments.ticketId, id));
+    await db.delete(ticketHistory).where(eq(ticketHistory.ticketId, id));
+    await db.delete(emailLogs).where(eq(emailLogs.ticketId, id));
+    await db.delete(tickets).where(eq(tickets.id, id));
   }
 
   async getCommentsByTicketId(ticketId: string): Promise<(Comment & { user: { username: string; role: string } })[]> {
