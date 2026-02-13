@@ -114,7 +114,7 @@ export async function registerRoutes(httpServer: Server | null, app: Express): P
       if (!ticket) return res.status(404).json({ message: "Ticket not found" });
       await storage.deleteTicket(req.params.id);
       res.json({ message: "Ticket deleted" });
-    } catch { res.status(500).json({ message: "Failed to delete ticket" }); }
+    } catch (err) { console.error("Delete ticket error:", err); res.status(500).json({ message: "Failed to delete ticket" }); }
   });
 
   app.post("/api/tickets", requireAuth, async (req, res) => {

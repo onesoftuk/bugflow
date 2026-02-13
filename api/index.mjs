@@ -61085,7 +61085,6 @@ var init_storage = __esm({
         await db.delete(attachments).where(eq(attachments.ticketId, id));
         await db.delete(comments).where(eq(comments.ticketId, id));
         await db.delete(ticketHistory).where(eq(ticketHistory.ticketId, id));
-        await db.delete(emailLogs).where(eq(emailLogs.ticketId, id));
         await db.delete(tickets).where(eq(tickets.id, id));
       }
       async getCommentsByTicketId(ticketId) {
@@ -81833,7 +81832,8 @@ async function registerRoutes(httpServer, app2) {
       if (!ticket) return res.status(404).json({ message: "Ticket not found" });
       await storage.deleteTicket(req.params.id);
       res.json({ message: "Ticket deleted" });
-    } catch {
+    } catch (err) {
+      console.error("Delete ticket error:", err);
       res.status(500).json({ message: "Failed to delete ticket" });
     }
   });
