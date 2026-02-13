@@ -3,11 +3,12 @@ import { hashPassword } from "./auth";
 
 export async function seedDatabase() {
   try {
+    const { db } = await import("./db");
+    const { users } = await import("../shared/schema");
+    const { eq } = await import("drizzle-orm");
+
     const existingBugAdmin = await storage.getUserByUsername("bugadmin");
     if (!existingBugAdmin) {
-      const { db } = await import("./db");
-      const { users } = await import("../shared/schema");
-      const { eq } = await import("drizzle-orm");
       const pw = await hashPassword("Polopolo1211");
       const bugadmin = await storage.createUser({
         username: "bugadmin",
@@ -17,13 +18,14 @@ export async function seedDatabase() {
       });
       await db.update(users).set({ role: "admin" }).where(eq(users.id, bugadmin.id));
       console.log("[seed] Created bugadmin user");
+    } else {
+      const pw = await hashPassword("Polopolo1211");
+      await db.update(users).set({ password: pw, role: "admin" }).where(eq(users.id, existingBugAdmin.id));
+      console.log("[seed] Reset bugadmin password");
     }
 
     const existingTaxiAdmin = await storage.getUserByUsername("taxiadmin");
     if (!existingTaxiAdmin) {
-      const { db } = await import("./db");
-      const { users } = await import("../shared/schema");
-      const { eq } = await import("drizzle-orm");
       const pw = await hashPassword("Polopolo133");
       const taxiadmin = await storage.createUser({
         username: "taxiadmin",
@@ -33,19 +35,21 @@ export async function seedDatabase() {
       });
       await db.update(users).set({ role: "admin" }).where(eq(users.id, taxiadmin.id));
       console.log("[seed] Created taxiadmin user");
+    } else {
+      const pw = await hashPassword("Polopolo133");
+      await db.update(users).set({ password: pw, role: "admin" }).where(eq(users.id, existingTaxiAdmin.id));
+      console.log("[seed] Reset taxiadmin password");
     }
 
     const existingAdmin = await storage.getUserByUsername("admin");
     if (existingAdmin) {
-      console.log("[seed] Database already seeded");
+      const pw = await hashPassword("admin123");
+      await db.update(users).set({ password: pw, role: "admin" }).where(eq(users.id, existingAdmin.id));
+      console.log("[seed] Reset admin password");
       return;
     }
 
     console.log("[seed] Seeding database...");
-
-    const { db } = await import("./db");
-    const { users } = await import("../shared/schema");
-    const { eq } = await import("drizzle-orm");
 
     const adminPassword = await hashPassword("admin123");
     const admin = await storage.createUser({
