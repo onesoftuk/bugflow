@@ -81660,16 +81660,25 @@ async function sendTicketEmail(type, ticket, user, extra) {
     if (type === "status_changed") {
       const oldLabel = STATUS_LABELS[extra.oldStatus] || extra.oldStatus;
       const newLabel = STATUS_LABELS[extra.newStatus] || extra.newStatus;
+      const isCompleted = ["resolved", "closed"].includes(extra.newStatus);
+      let recipients = [user.email, ...adminRecipients];
+      if (isCompleted) {
+        const allUsers = await storage.getAllUsers();
+        const allEmails = allUsers.filter((u) => u.isActive && u.email).map((u) => u.email);
+        recipients = [.../* @__PURE__ */ new Set([...allEmails, ...adminRecipients])];
+      }
       await sendEmail(
-        [user.email, ...adminRecipients],
-        `[BugFlow] Status Update: "${ticket.title}" - ${newLabel}`,
-        buildEmailHtml("Ticket Status Updated", [
+        recipients,
+        `[BugFlow] ${isCompleted ? "Completed" : "Status Update"}: "${ticket.title}" - ${newLabel}`,
+        buildEmailHtml(isCompleted ? "Ticket Completed" : "Ticket Status Updated", [
           `<strong>Ticket:</strong> ${ticket.title}`,
           `<strong>App:</strong> ${appLabel}`,
+          `<strong>Type:</strong> ${ticket.type === "bug" ? "Bug Fix" : "Feature Request"}`,
           `<strong>Status:</strong> <span style="text-decoration:line-through">${oldLabel}</span> &rarr; <strong>${newLabel}</strong>`,
-          `<strong>Updated by:</strong> ${extra.changedBy}`
+          `<strong>Updated by:</strong> ${extra.changedBy}`,
+          ...isCompleted ? [`<p style="margin-top:8px;padding:12px;background:#dcfce7;border-radius:6px;color:#166534;">This ticket has been marked as complete.</p>`] : []
         ]),
-        `Ticket "${ticket.title}" status changed from ${oldLabel} to ${newLabel}`
+        `Ticket "${ticket.title}" ${isCompleted ? "completed" : `status changed from ${oldLabel} to ${newLabel}`}`
       );
       return true;
     }
