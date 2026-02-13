@@ -14,10 +14,8 @@ async function ensureInit() {
   initialized = true;
   try {
     await registerRoutes(null, app);
-    if (process.env.SEED_DATABASE === "true") {
-      const { seedDatabase } = await import("./seed");
-      await seedDatabase();
-    }
+    const { seedDatabase } = await import("./seed");
+    await seedDatabase();
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       const status = err.status || err.statusCode || 500;
       const message = err.message || "Internal Server Error";

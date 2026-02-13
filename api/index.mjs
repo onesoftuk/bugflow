@@ -81402,11 +81402,11 @@ __export(seed_exports, {
 });
 async function seedDatabase() {
   try {
+    const { db: db2 } = await Promise.resolve().then(() => (init_db2(), db_exports));
+    const { users: users2 } = await Promise.resolve().then(() => (init_schema2(), schema_exports));
+    const { eq: eq2 } = await Promise.resolve().then(() => (init_drizzle_orm(), drizzle_orm_exports));
     const existingBugAdmin = await storage.getUserByUsername("bugadmin");
     if (!existingBugAdmin) {
-      const { db: db3 } = await Promise.resolve().then(() => (init_db2(), db_exports));
-      const { users: users3 } = await Promise.resolve().then(() => (init_schema2(), schema_exports));
-      const { eq: eq3 } = await Promise.resolve().then(() => (init_drizzle_orm(), drizzle_orm_exports));
       const pw = await hashPassword("Polopolo1211");
       const bugadmin = await storage.createUser({
         username: "bugadmin",
@@ -81414,14 +81414,15 @@ async function seedDatabase() {
         password: pw,
         name: "Bug Admin"
       });
-      await db3.update(users3).set({ role: "admin" }).where(eq3(users3.id, bugadmin.id));
+      await db2.update(users2).set({ role: "admin" }).where(eq2(users2.id, bugadmin.id));
       console.log("[seed] Created bugadmin user");
+    } else {
+      const pw = await hashPassword("Polopolo1211");
+      await db2.update(users2).set({ password: pw, role: "admin" }).where(eq2(users2.id, existingBugAdmin.id));
+      console.log("[seed] Reset bugadmin password");
     }
     const existingTaxiAdmin = await storage.getUserByUsername("taxiadmin");
     if (!existingTaxiAdmin) {
-      const { db: db3 } = await Promise.resolve().then(() => (init_db2(), db_exports));
-      const { users: users3 } = await Promise.resolve().then(() => (init_schema2(), schema_exports));
-      const { eq: eq3 } = await Promise.resolve().then(() => (init_drizzle_orm(), drizzle_orm_exports));
       const pw = await hashPassword("Polopolo133");
       const taxiadmin = await storage.createUser({
         username: "taxiadmin",
@@ -81429,18 +81430,21 @@ async function seedDatabase() {
         password: pw,
         name: "Taxi Admin"
       });
-      await db3.update(users3).set({ role: "admin" }).where(eq3(users3.id, taxiadmin.id));
+      await db2.update(users2).set({ role: "admin" }).where(eq2(users2.id, taxiadmin.id));
       console.log("[seed] Created taxiadmin user");
+    } else {
+      const pw = await hashPassword("Polopolo133");
+      await db2.update(users2).set({ password: pw, role: "admin" }).where(eq2(users2.id, existingTaxiAdmin.id));
+      console.log("[seed] Reset taxiadmin password");
     }
     const existingAdmin = await storage.getUserByUsername("admin");
     if (existingAdmin) {
-      console.log("[seed] Database already seeded");
+      const pw = await hashPassword("admin123");
+      await db2.update(users2).set({ password: pw, role: "admin" }).where(eq2(users2.id, existingAdmin.id));
+      console.log("[seed] Reset admin password");
       return;
     }
     console.log("[seed] Seeding database...");
-    const { db: db2 } = await Promise.resolve().then(() => (init_db2(), db_exports));
-    const { users: users2 } = await Promise.resolve().then(() => (init_schema2(), schema_exports));
-    const { eq: eq2 } = await Promise.resolve().then(() => (init_drizzle_orm(), drizzle_orm_exports));
     const adminPassword = await hashPassword("admin123");
     const admin = await storage.createUser({
       username: "admin",
@@ -82136,10 +82140,8 @@ async function ensureInit() {
   initialized = true;
   try {
     await registerRoutes(null, app);
-    if (process.env.SEED_DATABASE === "true") {
-      const { seedDatabase: seedDatabase2 } = await Promise.resolve().then(() => (init_seed(), seed_exports));
-      await seedDatabase2();
-    }
+    const { seedDatabase: seedDatabase2 } = await Promise.resolve().then(() => (init_seed(), seed_exports));
+    await seedDatabase2();
     app.use((err, _req, res, _next) => {
       const status = err.status || err.statusCode || 500;
       const message = err.message || "Internal Server Error";
