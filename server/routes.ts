@@ -108,6 +108,15 @@ export async function registerRoutes(httpServer: Server | null, app: Express): P
     } catch { res.status(500).json({ message: "Failed to fetch ticket" }); }
   });
 
+  app.delete("/api/tickets/:id", requireAdmin, async (req, res) => {
+    try {
+      const ticket = await storage.getTicketById(req.params.id);
+      if (!ticket) return res.status(404).json({ message: "Ticket not found" });
+      await storage.deleteTicket(req.params.id);
+      res.json({ message: "Ticket deleted" });
+    } catch { res.status(500).json({ message: "Failed to delete ticket" }); }
+  });
+
   app.post("/api/tickets", requireAuth, async (req, res) => {
     try {
       const data = insertTicketSchema.parse(req.body);
